@@ -1,0 +1,53 @@
+name: Publicar Mi Mundo Mágico
+
+on:
+  push:
+    branches:
+      - mi-mundo-magico-web
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+environment:
+  name: github-pages
+  url: ${{ steps.deployment.outputs.page_url }}
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar la rama de la aplicación
+        uses: actions/checkout@v6
+
+      - name: Habilitar GitHub Pages si todavía no existe
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/${GITHUB_REPOSITORY}/pages" >/dev/null 2>&1 || \
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/pages" -f build_type=workflow
+
+      - name: Configurar GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Preparar únicamente los archivos de la aplicación
+        run: |
+          mkdir -p _site/chunks
+          cp index.html style.css loader.js manifest.json icon.svg sw.js LIVE.md _site/
+          cp chunks/*.txt _site/chunks/
+          touch _site/.nojekyll
+
+      - name: Subir la aplicación
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+
+      - name: Publicar en GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
