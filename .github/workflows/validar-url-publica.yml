@@ -1,0 +1,69 @@
+name: Validar URL pública de Mi Mundo Mágico
+
+on:
+  push:
+    branches:
+      - mi-mundo-magico-web
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar-url:
+    runs-on: ubuntu-latest
+    env:
+      PUBLIC_URL: https://rawcdn.githack.com/dimarfe/oaqjp-final-project-emb-ai/e06571adb25b62e9a2fa6980c462dfd470946e23/index.html
+      API_URL: https://kfmyyvjkkhwpwubszmec.supabase.co/functions/v1/magic-world-api?action=health
+    steps:
+      - name: Verificar recursos públicos
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --location --retry 5 --retry-delay 3 "$PUBLIC_URL" -o /tmp/index.html
+          grep -q '<title>Mi Mundo Mágico</title>' /tmp/index.html
+          ! grep -q 'External Content Notice' /tmp/index.html
+          BASE="${PUBLIC_URL%index.html}"
+          for recurso in style.css loader.js manifest.json icon.svg sw.js chunks/app-gz-00.txt chunks/app-gz-01.txt chunks/image-00.txt chunks/image-01.txt chunks/image-02.txt chunks/image-03.txt chunks/image-04.txt; do
+            curl --fail --silent --show-error --location --retry 5 --retry-delay 2 "${BASE}${recurso}" -o "/tmp/$(echo "$recurso" | tr '/' '-')"
+          done
+          curl --fail --silent --show-error --location --retry 5 "$API_URL" | grep -q '"ok":true'
+
+      - name: Abrir en Chrome y comprobar la aplicación
+        shell: bash
+        run: |
+          set -euo pipefail
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser)"
+          test -n "$CHROME"
+          "$CHROME" \
+            --headless=new \
+            --no-sandbox \
+            --disable-gpu \
+            --disable-dev-shm-usage \
+            --virtual-time-budget=30000 \
+            --window-size=1440,1200 \
+            --dump-dom "$PUBLIC_URL" > /tmp/dom.html
+          grep -q 'id="app"' /tmp/dom.html
+          ! grep -q 'class="app hidden"' /tmp/dom.html
+          ! grep -q 'External Content Notice' /tmp/dom.html
+          ! grep -q 'No se pudo abrir Mi Mundo Mágico' /tmp/dom.html
+          for texto in 'Panel del mundo' Elendil Feyre Glacial Chispa Zeus Riven Sky; do
+            grep -q "$texto" /tmp/dom.html
+          done
+          "$CHROME" \
+            --headless=new \
+            --no-sandbox \
+            --disable-gpu \
+            --disable-dev-shm-usage \
+            --virtual-time-budget=30000 \
+            --window-size=1440,1200 \
+            --screenshot=/tmp/mi-mundo-magico.png \
+            "$PUBLIC_URL"
+          test -s /tmp/mi-mundo-magico.png
+
+      - name: Guardar captura verificada
+        uses: actions/upload-artifact@v4
+        with:
+          name: captura-url-publica
+          path: /tmp/mi-mundo-magico.png
+          retention-days: 7
