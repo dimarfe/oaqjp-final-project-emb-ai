@@ -1,0 +1,72 @@
+name: Validar Mi Mundo Mágico en GitHub Pages
+
+on:
+  push:
+    branches:
+      - mi-mundo-magico-web
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar-pages:
+    runs-on: ubuntu-latest
+    env:
+      PUBLIC_URL: https://dimarfe.github.io/oaqjp-final-project-emb-ai/
+      API_URL: https://kfmyyvjkkhwpwubszmec.supabase.co/functions/v1/magic-world-api?action=health
+    steps:
+      - name: Esperar y verificar GitHub Pages
+        shell: bash
+        run: |
+          set -euo pipefail
+          for intento in 1 2 3 4 5 6; do
+            if curl --fail --silent --show-error --location "$PUBLIC_URL" -o /tmp/index.html && grep -q '<title>Mi Mundo Mágico</title>' /tmp/index.html; then
+              break
+            fi
+            sleep 10
+          done
+          grep -q '<title>Mi Mundo Mágico</title>' /tmp/index.html
+          BASE="$PUBLIC_URL"
+          for recurso in style.css loader.js manifest.json icon.svg sw.js chunks/app-gz-00.txt chunks/app-gz-01.txt chunks/image-00.txt chunks/image-01.txt chunks/image-02.txt chunks/image-03.txt chunks/image-04.txt; do
+            curl --fail --silent --show-error --location --retry 5 --retry-delay 2 "${BASE}${recurso}" -o "/tmp/$(echo "$recurso" | tr '/' '-')"
+          done
+          curl --fail --silent --show-error --location --retry 5 "$API_URL" | grep -q '"ok":true'
+
+      - name: Abrir la aplicación en Chrome
+        shell: bash
+        run: |
+          set -euo pipefail
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser)"
+          test -n "$CHROME"
+          "$CHROME" \
+            --headless=new \
+            --no-sandbox \
+            --disable-gpu \
+            --disable-dev-shm-usage \
+            --virtual-time-budget=30000 \
+            --window-size=1440,1200 \
+            --dump-dom "$PUBLIC_URL" > /tmp/dom.html
+          grep -q 'id="app"' /tmp/dom.html
+          ! grep -q 'class="app hidden"' /tmp/dom.html
+          ! grep -q 'No se pudo abrir Mi Mundo Mágico' /tmp/dom.html
+          for texto in 'Panel del mundo' Elendil Feyre Glacial Chispa Zeus Riven Sky; do
+            grep -q "$texto" /tmp/dom.html
+          done
+          "$CHROME" \
+            --headless=new \
+            --no-sandbox \
+            --disable-gpu \
+            --disable-dev-shm-usage \
+            --virtual-time-budget=30000 \
+            --window-size=1440,1200 \
+            --screenshot=/tmp/mi-mundo-magico-github-pages.png \
+            "$PUBLIC_URL"
+          test -s /tmp/mi-mundo-magico-github-pages.png
+
+      - name: Guardar captura verificada
+        uses: actions/upload-artifact@v4
+        with:
+          name: captura-github-pages
+          path: /tmp/mi-mundo-magico-github-pages.png
+          retention-days: 7
