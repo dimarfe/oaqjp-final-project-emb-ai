@@ -1,4 +1,4 @@
-name: Publicar Mi Mundo Mágico
+name: Validar Mi Mundo Mágico
 
 on:
   push:
@@ -8,45 +8,88 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
-  group: github-pages
+  group: validar-mi-mundo-magico
   cancel-in-progress: true
 
 jobs:
-  deploy:
+  validar:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+    env:
+      PUBLIC_URL: https://raw.githack.com/dimarfe/oaqjp-final-project-emb-ai/mi-mundo-magico-web/index.html
+      API_URL: https://kfmyyvjkkhwpwubszmec.supabase.co/functions/v1/magic-world-api?action=health
     steps:
       - name: Descargar la rama de la aplicación
         uses: actions/checkout@v6
 
-      - name: Habilitar GitHub Pages si todavía no existe
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Comprobar el código y la ilustración
+        shell: bash
         run: |
-          gh api "repos/${GITHUB_REPOSITORY}/pages" >/dev/null 2>&1 || \
-          gh api --method POST "repos/${GITHUB_REPOSITORY}/pages" -f build_type=workflow
+          set -euo pipefail
+          cat chunks/app-gz-*.txt | tr -d '\r\n ' | base64 --decode | gzip --decompress > /tmp/mi-mundo-magico.js
+          node --check /tmp/mi-mundo-magico.js
+          for personaje in Elendil Feyre Glacial Chispa Zeus Riven Sky; do
+            grep -q "$personaje" /tmp/mi-mundo-magico.js
+          done
+          cat chunks/image-*.txt | tr -d '\r\n ' | base64 --decode > /tmp/familia.webp
+          test -s /tmp/familia.webp
+          file /tmp/familia.webp | grep -qi 'Web/P'
+          grep -q 'loader.js' index.html
+          grep -q 'Mi Mundo Mágico' index.html
 
-      - name: Configurar GitHub Pages
-        uses: actions/configure-pages@v5
-
-      - name: Preparar únicamente los archivos de la aplicación
+      - name: Comprobar la dirección pública y todos sus recursos
+        shell: bash
         run: |
-          mkdir -p _site/chunks
-          cp index.html style.css loader.js manifest.json icon.svg sw.js LIVE.md _site/
-          cp chunks/*.txt _site/chunks/
-          touch _site/.nojekyll
+          set -euo pipefail
+          curl --fail --silent --show-error --location --retry 4 --retry-delay 3 "$PUBLIC_URL" -o /tmp/index-publico.html
+          grep -q 'Mi Mundo Mágico' /tmp/index-publico.html
+          BASE="${PUBLIC_URL%index.html}"
+          for recurso in style.css loader.js manifest.json icon.svg sw.js chunks/app-gz-00.txt chunks/app-gz-01.txt chunks/image-00.txt chunks/image-01.txt chunks/image-02.txt chunks/image-03.txt chunks/image-04.txt; do
+            curl --fail --silent --show-error --location --retry 4 --retry-delay 2 "${BASE}${recurso}" -o "/tmp/$(echo "$recurso" | tr '/' '-')"
+          done
+          curl --fail --silent --show-error --location --retry 4 "$API_URL" | tee /tmp/api-health.json | grep -q '"ok":true'
 
-      - name: Subir la aplicación
-        uses: actions/upload-pages-artifact@v4
+      - name: Abrir la aplicación en Chrome y verificar la interfaz
+        shell: bash
+        run: |
+          set -euo pipefail
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser)"
+          test -n "$CHROME"
+          "$CHROME" \
+            --headless=new \
+            --no-sandbox \
+            --disable-gpu \
+            --disable-dev-shm-usage \
+            --virtual-time-budget=20000 \
+            --window-size=1440,1200 \
+            --dump-dom "$PUBLIC_URL" > /tmp/mi-mundo-magico-dom.html
+          grep -q 'id="app"' /tmp/mi-mundo-magico-dom.html
+          grep -q 'Elendil' /tmp/mi-mundo-magico-dom.html
+          grep -q 'Feyre' /tmp/mi-mundo-magico-dom.html
+          grep -q 'Glacial' /tmp/mi-mundo-magico-dom.html
+          grep -q 'Chispa' /tmp/mi-mundo-magico-dom.html
+          grep -q 'Zeus' /tmp/mi-mundo-magico-dom.html
+          grep -q 'Riven' /tmp/mi-mundo-magico-dom.html
+          grep -q 'Sky' /tmp/mi-mundo-magico-dom.html
+          grep -q 'Panel del mundo' /tmp/mi-mundo-magico-dom.html
+          grep -q 'Personajes' /tmp/mi-mundo-magico-dom.html
+          ! grep -q 'No se pudo abrir Mi Mundo Mágico' /tmp/mi-mundo-magico-dom.html
+          ! grep -q 'class="app hidden"' /tmp/mi-mundo-magico-dom.html
+          "$CHROME" \
+            --headless=new \
+            --no-sandbox \
+            --disable-gpu \
+            --disable-dev-shm-usage \
+            --virtual-time-budget=20000 \
+            --window-size=1440,1200 \
+            --screenshot=/tmp/mi-mundo-magico.png \
+            "$PUBLIC_URL"
+          test -s /tmp/mi-mundo-magico.png
+
+      - name: Guardar captura de la prueba
+        uses: actions/upload-artifact@v4
         with:
-          path: _site
-
-      - name: Publicar en GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          name: captura-mi-mundo-magico
+          path: /tmp/mi-mundo-magico.png
+          retention-days: 7
