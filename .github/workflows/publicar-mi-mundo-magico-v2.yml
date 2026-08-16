@@ -17,32 +17,30 @@ jobs:
   publicar:
     runs-on: ubuntu-latest
     steps:
-      - name: Descargar la versión v2
+      - name: Descargar la rama de la aplicación
         uses: actions/checkout@v6
         with:
           ref: mi-mundo-magico-v2
           fetch-depth: 0
 
-      - name: Comprobar y descomprimir la aplicación
+      - name: Reconstruir y comprobar la aplicación
         shell: bash
         run: |
           set -euo pipefail
           rm -rf /tmp/mundo-v2
           mkdir -p /tmp/mundo-v2
-          tar -xzf release/mi-mundo-magico-v2.tar.gz -C /tmp/mundo-v2
+          cat release/light/chunk-*.txt release/light/tail-*.txt | tr -d '\r\n ' | base64 --decode > /tmp/mundo-v2.tar.gz
+          tar -xzf /tmp/mundo-v2.tar.gz -C /tmp/mundo-v2
           test -s /tmp/mundo-v2/index.html
           test -s /tmp/mundo-v2/app.js
           test -s /tmp/mundo-v2/styles.css
           node --check /tmp/mundo-v2/app.js
           grep -q '<title>Mi mundo Mágico v2</title>' /tmp/mundo-v2/index.html
           for personaje in Elendil Feyre Glacial Chispa Zeus Riven Sky; do
-            grep -q "$personaje" /tmp/mundo-v2/app.js
-          done
-          for recurso in assets/hero.webp assets/portraits/elendil.webp assets/portraits/feyre.webp assets/portraits/glacial.webp assets/portraits/chispa.webp assets/portraits/zeus.webp assets/portraits/riven.webp assets/portraits/sky.webp assets/stickers/elendil.webp assets/stickers/feyre.webp assets/stickers/glacial.webp assets/stickers/chispa.webp assets/stickers/zeus.webp assets/stickers/riven.webp assets/stickers/sky.webp; do
-            test -s "/tmp/mundo-v2/$recurso"
+            grep -q "$personaje" /tmp/mundo-v2/index.html
           done
 
-      - name: Publicar como única versión v2 en GitHub Pages
+      - name: Publicar la única versión v2 en GitHub Pages
         shell: bash
         run: |
           set -euo pipefail
@@ -63,22 +61,24 @@ jobs:
             git push origin HEAD:gh-pages
           fi
 
-      - name: Verificar la publicación y el backend compartido
+      - name: Verificar la publicación y el mundo compartido
         shell: bash
         env:
           PUBLIC_URL: https://dimarfe.github.io/oaqjp-final-project-emb-ai/v2/
           API_URL: https://kfmyyvjkkhwpwubszmec.supabase.co/functions/v1/magic-world-api?action=health
         run: |
           set -euo pipefail
-          for intento in {1..24}; do
+          for intento in {1..30}; do
             if curl --fail --silent --show-error --location "$PUBLIC_URL" -o /tmp/v2-publica.html && grep -q '<title>Mi mundo Mágico v2</title>' /tmp/v2-publica.html; then
               break
             fi
             sleep 5
           done
           grep -q '<title>Mi mundo Mágico v2</title>' /tmp/v2-publica.html
-          BASE="${PUBLIC_URL}"
-          for recurso in app.js styles.css manifest.webmanifest assets/hero.webp assets/portraits/elendil.webp assets/stickers/sky.webp; do
-            curl --fail --silent --show-error --location "${BASE}${recurso}" -o "/tmp/$(echo "$recurso" | tr '/' '-')"
+          for recurso in app.js styles.css manifest.webmanifest sw.js assets/icon.svg assets/default-avatar.svg; do
+            curl --fail --silent --show-error --location "${PUBLIC_URL}${recurso}" -o "/tmp/$(echo "$recurso" | tr '/' '-')"
+          done
+          for recurso in image-00.txt image-01.txt image-02.txt image-03.txt image-04.txt; do
+            curl --fail --silent --show-error --location "https://dimarfe.github.io/oaqjp-final-project-emb-ai/chunks/${recurso}" -o "/tmp/${recurso}"
           done
           curl --fail --silent --show-error --location "$API_URL" | grep -q '"ok":true'
