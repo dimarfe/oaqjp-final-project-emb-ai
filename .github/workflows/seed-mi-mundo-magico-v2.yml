@@ -1,0 +1,48 @@
+name: Preparar estado compartido de Mi mundo Mágico v2
+
+on:
+  push:
+    branches:
+      - mi-mundo-magico-v2
+    paths:
+      - '.github/workflows/seed-mi-mundo-magico-v2.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  crear-estado-compartido:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar la rama v2
+        uses: actions/checkout@v6
+
+      - name: Crear la única ficha compartida
+        shell: bash
+        env:
+          API_URL: https://kfmyyvjkkhwpwubszmec.supabase.co/functions/v1/magic-world-api?action=submit
+        run: |
+          set -euo pipefail
+          jq -n --slurpfile state v2/seed.json '{
+            share_code: "MAGIC-WORLD-V2-SHARED",
+            author_name: "Mi mundo Mágico v2",
+            world_name: $state[0].world.name,
+            data: $state[0],
+            generated_document: "Estado inicial compartido de Mi mundo Mágico v2"
+          }' > /tmp/body.json
+          curl --fail --silent --show-error --location \
+            -X POST "$API_URL" \
+            -H 'Content-Type: application/json' \
+            --data-binary @/tmp/body.json \
+            -o /tmp/shared-v2.json
+          jq -e '.editor_token and .id' /tmp/shared-v2.json >/dev/null
+          echo "::add-mask::$(jq -r .editor_token /tmp/shared-v2.json)"
+          echo "Estado compartido creado correctamente."
+
+      - name: Guardar credencial técnica para terminar la publicación
+        uses: actions/upload-artifact@v4
+        with:
+          name: credencial-estado-compartido-v2
+          path: /tmp/shared-v2.json
+          retention-days: 1
