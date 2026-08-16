@@ -1,6 +1,6 @@
-const CACHE='mi-mundo-magico-v2-20260816-2';
+const CACHE='mi-mundo-magico-v2-ai-context-1';
 const CORE=[
-  './','index.html','styles.css','app.js','manifest.webmanifest','assets/icon.svg','assets/default-avatar.svg',
+  './','index.html','styles.css','app.js','ai-context.js','manifest.webmanifest','assets/icon.svg','assets/default-avatar.svg',
   '../chunks/image-00.txt','../chunks/image-01.txt','../chunks/image-02.txt','../chunks/image-03.txt','../chunks/image-04.txt'
 ];
 self.addEventListener('install',event=>event.waitUntil(
