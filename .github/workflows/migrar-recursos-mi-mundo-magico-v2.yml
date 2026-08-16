@@ -1,0 +1,64 @@
+name: Migrar recursos de Mi Mundo Mágico v2
+
+on:
+  push:
+    branches:
+      - mi-mundo-magico-web
+    paths:
+      - .github/workflows/migrar-recursos-mi-mundo-magico-v2.yml
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  migrar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Recuperar temporalmente la credencial del mundo compartido
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api /repos/${GITHUB_REPOSITORY}/actions/artifacts/9262951174/zip > /tmp/credencial.zip
+          unzip -q /tmp/credencial.zip -d /tmp/credencial
+          test -s /tmp/credencial/mi-mundo-magico-v2-token.json
+
+      - name: Actualizar las rutas de las pegatinas sin crear otra versión
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOKEN=$(python -c "import json; print(json.load(open('/tmp/credencial/mi-mundo-magico-v2-token.json'))['editor_token'])")
+          curl --fail --silent --show-error --get \
+            --data-urlencode 'action=get' \
+            --data-urlencode "token=${TOKEN}" \
+            'https://kfmyyvjkkhwpwubszmec.supabase.co/functions/v1/magic-world-api' > /tmp/fila.json
+          python - <<'PY'
+          import json
+          row=json.load(open('/tmp/fila.json'))
+          def replace(value):
+              if isinstance(value, dict): return {k:replace(v) for k,v in value.items()}
+              if isinstance(value, list): return [replace(v) for v in value]
+              if isinstance(value, str): return value.replace('assets/stickers/elendil.png','assets/stickers/elendil.webp').replace('assets/stickers/feyre.png','assets/stickers/feyre.webp').replace('assets/stickers/glacial.png','assets/stickers/glacial.webp').replace('assets/stickers/chispa.png','assets/stickers/chispa.webp').replace('assets/stickers/zeus.png','assets/stickers/zeus.webp').replace('assets/stickers/riven.png','assets/stickers/riven.webp').replace('assets/stickers/sky.png','assets/stickers/sky.webp')
+              return value
+          data=replace(row['data'])
+          sync=data.setdefault('_sync',{})
+          sync['revision']=int(sync.get('revision',1))+1
+          sync['updatedBy']='Sistema'
+          sync['app']='Mi Mundo Mágico v2'
+          payload={
+              'editor_token':json.load(open('/tmp/credencial/mi-mundo-magico-v2-token.json'))['editor_token'],
+              'author_name':'Sistema',
+              'world_name':data.get('world',{}).get('name','Mi Mundo Mágico v2'),
+              'data':data,
+              'generated_document':''
+          }
+          json.dump(payload,open('/tmp/actualizacion.json','w'),ensure_ascii=False,separators=(',',':'))
+          PY
+          curl --fail --silent --show-error \
+            -X PUT -H 'Content-Type: application/json' \
+            --data-binary @/tmp/actualizacion.json \
+            'https://kfmyyvjkkhwpwubszmec.supabase.co/functions/v1/magic-world-api?action=update' > /tmp/respuesta.json
+          grep -q 'updated_at' /tmp/respuesta.json
+          echo 'El único canon compartido ha sido actualizado.'
