@@ -1,0 +1,48 @@
+name: Bootstrap Mi mundo Mágico v2 canonical
+
+on:
+  push:
+    branches:
+      - mi-mundo-magico-v2
+    paths:
+      - .github/workflows/bootstrap-v2-canonical.yml
+
+permissions:
+  contents: read
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Crear el único mundo compartido
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > /tmp/body.json <<'JSON'
+          {
+            "share_code": "MAGIC_WORLD_V2_CANONICAL",
+            "author_name": "Mi mundo Mágico v2",
+            "world_name": "El Reino de las Siete Torres",
+            "data": {"bootstrap": true, "appName": "Mi mundo Mágico v2"},
+            "generated_document": ""
+          }
+          JSON
+          curl --fail --silent --show-error \
+            -X POST \
+            -H 'Content-Type: application/json' \
+            --data-binary @/tmp/body.json \
+            'https://kfmyyvjkkhwpwubszmec.supabase.co/functions/v1/magic-world-api?action=submit' \
+            > /tmp/canonical.json
+          python - <<'PY'
+          import json
+          p='/tmp/canonical.json'
+          data=json.load(open(p))
+          assert data.get('editor_token'), data
+          print('Canonical world created:', data.get('id'))
+          PY
+      - name: Entregar credencial cifrable
+        uses: actions/upload-artifact@v4
+        with:
+          name: mi-mundo-magico-v2-canonical
+          path: /tmp/canonical.json
+          retention-days: 1
