@@ -1,0 +1,61 @@
+name: Inicializar Mi Mundo Mágico v2
+
+on:
+  push:
+    branches:
+      - mi-mundo-magico-web
+    paths:
+      - .github/workflows/inicializar-mi-mundo-magico-v2.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inicializar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar el proyecto
+        uses: actions/checkout@v6
+
+      - name: Preparar el único canon compartido
+        shell: bash
+        run: |
+          set -euo pipefail
+          tr -d '\r\n ' < v2-init/seed.json.gz.b64 | base64 --decode | gzip --decompress > /tmp/seed.json
+          python - <<'PY'
+          import json
+          seed=json.load(open('/tmp/seed.json'))
+          payload={
+            'share_code':'MI-MUNDO-MAGICO-V2-CANON',
+            'author_name':'Sistema',
+            'world_name':seed['world']['name'],
+            'data':seed,
+            'generated_document':''
+          }
+          json.dump(payload,open('/tmp/payload.json','w'),ensure_ascii=False,separators=(',',':'))
+          PY
+
+      - name: Crear la única ficha compartida en la nube
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error \
+            -X POST \
+            -H 'Content-Type: application/json' \
+            --data-binary @/tmp/payload.json \
+            'https://kfmyyvjkkhwpwubszmec.supabase.co/functions/v1/magic-world-api?action=submit' \
+            > /tmp/mi-mundo-magico-v2-token.json
+          python - <<'PY'
+          import json
+          r=json.load(open('/tmp/mi-mundo-magico-v2-token.json'))
+          assert r.get('editor_token'), r
+          print('La ficha compartida se ha creado correctamente.')
+          PY
+
+      - name: Guardar la credencial para completar la publicación
+        uses: actions/upload-artifact@v4
+        with:
+          name: credencial-mi-mundo-magico-v2
+          path: /tmp/mi-mundo-magico-v2-token.json
+          retention-days: 1
