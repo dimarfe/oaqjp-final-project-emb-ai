@@ -1,0 +1,15 @@
+{
+  "name": "Mi mundo Mágico v2",
+  "short_name": "Mundo Mágico v2",
+  "description": "Un único mundo familiar compartido para crear personajes, lugares, aventuras, escenas, libros, imágenes y vídeos.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#15162f",
+  "theme_color": "#7868ff",
+  "lang": "es",
+  "icons": [
+    { "src": "assets/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
