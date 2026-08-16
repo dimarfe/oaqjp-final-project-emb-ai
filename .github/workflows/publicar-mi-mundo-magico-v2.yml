@@ -1,0 +1,84 @@
+name: Publicar Mi mundo Mágico v2
+
+on:
+  push:
+    branches:
+      - mi-mundo-magico-v2
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publicar-mi-mundo-magico-v2
+  cancel-in-progress: true
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar la versión v2
+        uses: actions/checkout@v6
+        with:
+          ref: mi-mundo-magico-v2
+          fetch-depth: 0
+
+      - name: Comprobar y descomprimir la aplicación
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/mundo-v2
+          mkdir -p /tmp/mundo-v2
+          tar -xzf release/mi-mundo-magico-v2.tar.gz -C /tmp/mundo-v2
+          test -s /tmp/mundo-v2/index.html
+          test -s /tmp/mundo-v2/app.js
+          test -s /tmp/mundo-v2/styles.css
+          node --check /tmp/mundo-v2/app.js
+          grep -q '<title>Mi mundo Mágico v2</title>' /tmp/mundo-v2/index.html
+          for personaje in Elendil Feyre Glacial Chispa Zeus Riven Sky; do
+            grep -q "$personaje" /tmp/mundo-v2/app.js
+          done
+          for recurso in assets/hero.webp assets/portraits/elendil.webp assets/portraits/feyre.webp assets/portraits/glacial.webp assets/portraits/chispa.webp assets/portraits/zeus.webp assets/portraits/riven.webp assets/portraits/sky.webp assets/stickers/elendil.webp assets/stickers/feyre.webp assets/stickers/glacial.webp assets/stickers/chispa.webp assets/stickers/zeus.webp assets/stickers/riven.webp assets/stickers/sky.webp; do
+            test -s "/tmp/mundo-v2/$recurso"
+          done
+
+      - name: Publicar como única versión v2 en GitHub Pages
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "dimarfe"
+          git config user.email "45332405+dimarfe@users.noreply.github.com"
+          git fetch origin gh-pages
+          git worktree add -B gh-pages /tmp/gh-pages origin/gh-pages
+          rm -rf /tmp/gh-pages/v2
+          mkdir -p /tmp/gh-pages/v2
+          cp -a /tmp/mundo-v2/. /tmp/gh-pages/v2/
+          touch /tmp/gh-pages/v2/.nojekyll
+          cd /tmp/gh-pages
+          git add -A v2
+          if git diff --cached --quiet; then
+            echo "La versión v2 ya estaba actualizada."
+          else
+            git commit -m "Publicar Mi mundo Mágico v2"
+            git push origin HEAD:gh-pages
+          fi
+
+      - name: Verificar la publicación y el backend compartido
+        shell: bash
+        env:
+          PUBLIC_URL: https://dimarfe.github.io/oaqjp-final-project-emb-ai/v2/
+          API_URL: https://kfmyyvjkkhwpwubszmec.supabase.co/functions/v1/magic-world-api?action=health
+        run: |
+          set -euo pipefail
+          for intento in {1..24}; do
+            if curl --fail --silent --show-error --location "$PUBLIC_URL" -o /tmp/v2-publica.html && grep -q '<title>Mi mundo Mágico v2</title>' /tmp/v2-publica.html; then
+              break
+            fi
+            sleep 5
+          done
+          grep -q '<title>Mi mundo Mágico v2</title>' /tmp/v2-publica.html
+          BASE="${PUBLIC_URL}"
+          for recurso in app.js styles.css manifest.webmanifest assets/hero.webp assets/portraits/elendil.webp assets/stickers/sky.webp; do
+            curl --fail --silent --show-error --location "${BASE}${recurso}" -o "/tmp/$(echo "$recurso" | tr '/' '-')"
+          done
+          curl --fail --silent --show-error --location "$API_URL" | grep -q '"ok":true'
