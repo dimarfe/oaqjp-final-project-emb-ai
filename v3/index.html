@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#15162f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="description" content="Mi mundo Mágico v3: un universo familiar compartido para inventar personajes, lugares, aventuras, escenas, libros, imágenes y vídeos.">
+  <title>Mi mundo Mágico v3</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="assets/icon.svg">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <noscript><div class="noscript">Esta aplicación necesita JavaScript para funcionar.</div></noscript>
+
+  <section class="login-screen" id="loginScreen" aria-labelledby="loginTitle">
+    <div class="login-art" aria-hidden="true">
+      <img src="assets/icon.svg" data-family-art alt="">
+      <div class="login-art-shade"></div>
+      <div class="floating-sticker sticker-one">⚡</div>
+      <div class="floating-sticker sticker-two">🌿</div>
+      <div class="floating-sticker sticker-three">❄️</div>
+      <div class="floating-sticker sticker-four">🔥</div>
+    </div>
+    <div class="login-panel">
+      <div class="logo-lockup"><span class="logo-star">✦</span><div><strong>MI MUNDO MÁGICO</strong><small>v3 · mundo compartido con IA integrada</small></div></div>
+      <div class="login-copy">
+        <span class="pill">Para aventureros de 10 a 15 años</span>
+        <h1 id="loginTitle">Entrad juntos.<br>Inventadlo todo.</h1>
+        <p>Todas las personas con el enlace y la contraseña editan la misma historia. Los cambios se guardan solos y aparecen para todo el mundo.</p>
+      </div>
+      <form class="login-form" id="loginForm">
+        <label for="loginName">Tu nombre o apodo</label>
+        <input id="loginName" name="name" autocomplete="nickname" maxlength="40" placeholder="Ej.: Celia">
+        <label for="loginPassword">Contraseña familiar</label>
+        <div class="password-row"><input id="loginPassword" name="password" type="password" autocomplete="current-password" required placeholder="Escribe la contraseña"><button type="button" class="icon-button" id="togglePassword" aria-label="Mostrar u ocultar contraseña">👁</button></div>
+        <button class="button button-primary button-large" type="submit"><span>Entrar en el mundo</span><b>→</b></button>
+        <div class="login-status" id="loginStatus" role="status"></div>
+      </form>
+      <p class="privacy-note">Usad solo nombres o apodos. No escribáis dirección, colegio, teléfono ni otros datos personales.</p>
+    </div>
+  </section>
+
+  <div class="app-shell hidden" id="appShell">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand"><span class="brand-mark">✦</span><div><strong>MI MUNDO<br>MÁGICO</strong><small>v3</small></div></div>
+      <button class="close-sidebar" id="closeSidebar" aria-label="Cerrar menú">×</button>
+      <div class="shared-world-badge"><i>🌍</i><div><b id="sideWorldName">El Reino de las Siete Torres</b><span>Un único mundo para todos</span></div></div>
+      <nav class="main-nav" id="mainNav" aria-label="Secciones de la aplicación">
+        <button data-route="dashboard" class="active"><i>⌂</i><span>Inicio</span></button>
+        <button data-route="characters"><i>🧙</i><span>Personajes</span></button>
+        <button data-route="locations"><i>🏰</i><span>Lugares</span></button>
+        <button data-route="adventures"><i>📖</i><span>Aventuras</span></button>
+        <button data-route="scene"><i>🎨</i><span>Creador de escenas</span></button>
+        <button data-route="studio"><i>✨</i><span>Estudio creativo</span></button>
+        <button data-route="library"><i>🗂️</i><span>Biblioteca</span></button>
+        <button data-route="world"><i>🌈</i><span>Reglas del mundo</span></button>
+        <button data-route="ai-context"><i>🧠</i><span>Contexto para IA</span></button>
+        <button data-route="owner" id="ownerNav" class="hidden"><i>🔐</i><span>Ajustes del propietario</span></button>
+      </nav>
+      <div class="sync-card"><div class="sync-dot" id="syncDot"></div><div><b id="syncText">Conectando…</b><span id="syncDetail">Los cambios se guardan automáticamente.</span></div></div>
+      <button class="logout-button" id="logoutButton">Salir de la aplicación</button>
+    </aside>
+
+    <main class="app-main">
+      <header class="topbar">
+        <button class="menu-button" id="openSidebar" aria-label="Abrir menú">☰</button>
+        <div class="topbar-title"><b id="topTitle">Mi mundo Mágico v3</b><span id="lastUpdate">Preparando el mundo compartido…</span></div>
+        <div class="topbar-actions"><span class="online-badge"><i></i> Compartido</span><button class="button button-soft" id="shareButton">↗ <span>Compartir</span></button></div>
+      </header>
+
+      <div class="remote-banner hidden" id="remoteBanner"><span>✨ Alguien ha cambiado el mundo mientras escribías.</span><button id="applyRemote">Ver los cambios</button></div>
+
+      <section class="app-view active" id="dashboardView" data-view="dashboard">
+        <div class="hero-card">
+          <img src="assets/icon.svg" data-family-art alt="Elendil, Feyre, Glacial, Chispa, Zeus, Riven y Sky ante las Siete Torres">
+          <div class="hero-overlay"></div>
+          <div class="hero-content"><span class="eyebrow">El Reino de las Siete Torres</span><h1>Un mundo que crece<br>cada vez que alguien imagina.</h1><p>Modificad personajes, lugares y aventuras. No hay copias distintas: todo el mundo trabaja sobre el mismo canon.</p><div class="hero-actions"><button class="button button-primary route-button" data-route="characters">Completar personajes</button><button class="button button-glass route-button" data-route="scene">Crear una escena</button></div></div>
+          <div class="hero-version"><strong>v3</strong><span>mundo vivo</span></div>
+        </div>
+        <div class="dashboard-stats" id="dashboardStats"></div>
+        <div class="section-heading"><div><span class="kicker">La familia</span><h2>Los siete guardianes</h2></div><button class="text-button route-button" data-route="characters">Ver todas las fichas →</button></div>
+        <div class="portrait-grid" id="dashboardCharacters"></div>
+        <div class="dashboard-columns">
+          <article class="feature-card feature-scene"><div><span class="feature-icon">🎨</span><h3>Juega con el mundo</h3><p>Coloca personajes y objetos como pegatinas, cambia el escenario y crea una ilustración propia.</p><button class="button button-dark route-button" data-route="scene">Abrir creador de escenas</button></div><img src="assets/default-avatar.svg" data-character-art="sky" alt="Sky"></article>
+          <article class="feature-card feature-studio"><div><span class="feature-icon">✨</span><h3>Estudio creativo</h3><p>Prepara libros, imágenes, vídeos y hojas de personajes con todo el canon del mundo.</p><button class="button button-dark route-button" data-route="studio">Entrar en el estudio</button></div><div class="mini-stack"><span>📕</span><span>🖼️</span><span>🎬</span></div></article>
+        </div>
+        <div class="activity-card"><div class="activity-icon">☁️</div><div><h3>Guardado automático compartido</h3><p id="activityText">Cada cambio se envía al mundo común sin tener que pulsar Guardar.</p></div><div class="activity-person" id="activityPerson">—</div></div>
+      </section>
+
+      <section class="app-view" id="charactersView" data-view="characters">
+        <div class="page-heading"><div><span class="kicker">Canon de la familia</span><h1>Personajes</h1><p>Sus retratos proceden de la ilustración principal. Cada uno puede transformarse en un animal y alcanzar una evolución mágica.</p></div><button class="button button-primary" id="addCharacterButton">＋ Nuevo personaje</button></div>
+        <div class="character-tabs" id="characterTabs"></div>
+        <div class="character-editor">
+          <aside class="character-profile" id="characterProfile"></aside>
+          <div class="editor-card"><div class="editor-tabs" id="characterEditorTabs"><button data-panel="identity" class="active">Identidad</button><button data-panel="magic">Magia</button><button data-panel="transform">Transformación</button><button data-panel="story">Historia</button></div><div class="form-grid" id="characterForm"></div></div>
+        </div>
+      </section>
+
+      <section class="app-view" id="locationsView" data-view="locations">
+        <div class="page-heading"><div><span class="kicker">Mapa vivo</span><h1>Lugares mágicos</h1><p>Cualquier cambio se convierte en parte del único mapa compartido.</p></div><button class="button button-primary" id="addLocationButton">＋ Nuevo lugar</button></div>
+        <div class="locations-list" id="locationsList"></div>
+      </section>
+
+      <section class="app-view" id="adventuresView" data-view="adventures">
+        <div class="page-heading"><div><span class="kicker">Historias en marcha</span><h1>Aventuras</h1><p>Inventad misiones, secretos, momentos divertidos y finales que abran nuevas puertas.</p></div><button class="button button-primary" id="addAdventureButton">＋ Nueva aventura</button></div>
+        <div class="adventure-layout"><div class="adventure-list" id="adventureList"></div><div class="editor-card"><div class="form-grid" id="adventureForm"></div></div></div>
+      </section>
+
+      <section class="app-view" id="sceneView" data-view="scene">
+        <div class="page-heading"><div><span class="kicker">Estilo de juego de mundo abierto</span><h1>Creador de escenas</h1><p>Un espacio original de pegatinas, personajes y escenarios coloridos, inspirado en el juego libre infantil sin copiar personajes ni diseños de ninguna marca.</p></div><div class="page-actions"><button class="button button-soft" id="clearSceneButton">Limpiar</button><button class="button button-primary" id="downloadSceneButton">Descargar PNG</button></div></div>
+        <div class="scene-layout">
+          <div class="scene-tools">
+            <div class="tool-section"><h3>Escenario</h3><div class="background-picker" id="backgroundPicker"></div></div>
+            <div class="tool-section"><h3>Personajes</h3><div class="sticker-picker" id="sceneCharacterPicker"></div></div>
+            <div class="tool-section"><h3>Objetos mágicos</h3><div class="prop-picker" id="propPicker"></div></div>
+            <div class="tool-section"><h3>Elemento seleccionado</h3><label>Tamaño<input type="range" min="0.25" max="1.5" step="0.05" id="sceneScale"></label><label>Giro<input type="range" min="-25" max="25" step="1" id="sceneRotation"></label><button class="button button-danger button-small" id="removeSceneItem">Quitar elemento</button></div>
+          </div>
+          <div class="scene-stage-card"><div class="scene-title-row"><input data-path="scene.title" aria-label="Título de la escena"><span>Arrastra los elementos con el dedo</span></div><div class="canvas-wrap"><canvas id="sceneCanvas" width="1200" height="720"></canvas></div><div class="scene-caption"><label>Frase o bocadillo<input data-path="scene.speech" placeholder="¿Qué están diciendo?"></label><div class="scene-save-actions"><button class="button button-soft" id="scenePromptButton">✨ Crear prompt de ilustración</button><button class="button button-primary" id="saveSceneLibraryButton">Guardar en la biblioteca</button></div></div></div>
+        </div>
+      </section>
+
+      <section class="app-view" id="studioView" data-view="studio">
+        <div class="page-heading"><div><span class="kicker">Libros · imágenes · vídeos · fichas · asistente</span><h1>Estudio creativo</h1><p>Utiliza el mundo compartido como canon. En v3 puedes generar textos, ilustraciones, vídeos y fichas con la API de OpenAI sin abandonar la aplicación; los botones «Usar mi ChatGPT» se mantienen como alternativa.</p></div><div class="ai-badge" id="aiBadge"><i></i><span>Comprobando OpenAI…</span></div></div>
+        <div class="ai-worker-card waiting" id="aiWorkerStatus"><div class="ai-worker-icon">🔐</div><div><b>Comprobando la conexión segura</b><span>La clave API nunca se incluye en el navegador.</span></div></div>
+        <div class="studio-tabs" id="studioTabs"><button data-studio="book" class="active">📕 Libro</button><button data-studio="image">🖼️ Ilustración</button><button data-studio="video">🎬 Vídeo</button><button data-studio="sheet">🪪 Hoja de personaje</button><button data-studio="chat">💬 IA dentro de la app</button></div><div class="notice info studio-note">Las creaciones integradas utilizan la API de OpenAI mediante un trabajador seguro: la clave permanece como secreto del servidor y nunca se descarga en el iPad. La suscripción de ChatGPT y el consumo de API se administran por separado.</div>
+        <div class="studio-panel active" id="bookStudio" data-studio-panel="book"><div class="studio-form-card"><div class="form-grid"><div class="field span-8"><label>Título del libro</label><input id="bookTitle" data-path="studio.lastBookTitle"></div><div class="field span-4"><label>Capítulos</label><select id="bookChapters" data-path="studio.bookChapters"><option value="4">4 capítulos</option><option value="6">6 capítulos</option><option value="8">8 capítulos</option><option value="10">10 capítulos</option></select></div><div class="field span-6"><label>Aventura principal</label><select id="bookAdventure"></select></div><div class="field span-6"><label>Tono</label><select id="bookTone"><option>Aventura familiar y divertida</option><option>Misterio mágico</option><option>Épico y emocionante</option><option>Comedia fantástica</option></select></div><div class="field full"><label>Algo especial que debe ocurrir</label><textarea id="bookExtra" placeholder="Ej.: El tren aparece al final y Sky descubre una nueva palabra."></textarea></div></div><div class="studio-actions"><button class="button button-soft" id="localBookButton">Crear borrador instantáneo</button><button class="button button-ai ai-action" id="generateAiBookButton">✨ Generar libro dentro de la app</button><button class="button button-chatgpt" id="chatgptBookButton">Usar mi ChatGPT</button></div></div><div class="studio-output" id="bookOutput"></div></div>
+        <div class="studio-panel" id="imageStudio" data-studio-panel="image"><div class="studio-form-card"><div class="form-grid"><div class="field full"><label>¿Qué quieres ilustrar?</label><textarea id="imageIdea" placeholder="Ej.: Toda la familia entrando en el tren de las estrellas, con las torres encendidas detrás."></textarea></div><div class="field span-6"><label>Personajes</label><div class="character-checks" id="imageCharacters"></div></div><div class="field span-3"><label>Formato</label><select id="imageSize" data-path="studio.imageSize"><option value="1536x1024">Paisaje</option><option value="1024x1024">Cuadrado</option><option value="1024x1536">Vertical</option></select></div><div class="field span-3"><label>Acabado</label><select id="imageFinish"><option value="playful">Juego juvenil 2D</option><option value="storybook">Álbum ilustrado</option><option value="cinematic">Fantasía cinematográfica</option><option value="comic">Cómic juvenil</option></select></div></div><div class="studio-actions"><button class="button button-soft route-button" data-route="scene">Montar con pegatinas</button><button class="button button-ai ai-action" id="generateAiImageButton">✨ Generar ilustración dentro de la app</button><button class="button button-chatgpt" id="chatgptImageButton">Usar mi ChatGPT</button></div></div><div class="studio-output" id="imageOutput"></div></div>
+        <div class="studio-panel" id="videoStudio" data-studio-panel="video"><div class="studio-form-card"><div class="form-grid"><div class="field full"><label>Escena para el vídeo</label><textarea id="videoIdea" placeholder="Ej.: Las siete torres se encienden, los personajes se transforman y el tren cruza el cielo."></textarea></div><div class="field span-4"><label>Duración</label><select id="videoSeconds" data-path="studio.videoSeconds"><option value="4">4 segundos</option><option value="8">8 segundos</option><option value="12">12 segundos</option></select></div><div class="field span-4"><label>Formato</label><select id="videoSize"><option value="1280x720">Horizontal</option><option value="720x1280">Vertical</option></select></div><div class="field span-4"><label>Movimiento</label><select id="videoMotion"><option>Cámara suave y cinematográfica</option><option>Animación dinámica y alegre</option><option>Plano general con acercamientos</option></select></div></div><div class="studio-actions"><button class="button button-soft" id="storyboardButton">Crear storyboard</button><button class="button button-primary" id="localVideoButton">Crear vídeo animado</button><button class="button button-ai ai-action" id="generateAiVideoButton">✨ Generar vídeo con OpenAI</button><button class="button button-chatgpt" id="chatgptVideoButton">Usar mi ChatGPT</button></div></div><div class="studio-output" id="videoOutput"></div></div>
+        <div class="studio-panel" id="sheetStudio" data-studio-panel="sheet"><div class="studio-form-card"><div class="form-grid"><div class="field span-6"><label>Personaje</label><select id="sheetCharacter"></select></div><div class="field span-6"><label>Tipo de ficha</label><select id="sheetType"><option>Ficha completa de personaje</option><option>Tarjeta de poderes</option><option>Hoja para ilustradores</option><option>Ficha para un libro</option></select></div><div class="field full"><label>Notas adicionales</label><textarea id="sheetExtra" placeholder="Ej.: Añadir tres poses y destacar la transformación animal."></textarea></div></div><div class="studio-actions"><button class="button button-soft" id="localSheetButton">Crear ficha instantánea</button><button class="button button-ai ai-action" id="generateAiSheetButton">✨ Generar ficha dentro de la app</button><button class="button button-chatgpt" id="chatgptSheetButton">Usar mi ChatGPT</button></div></div><div class="studio-output" id="sheetOutput"></div></div>
+        <div class="studio-panel" id="chatStudio" data-studio-panel="chat">
+          <div class="studio-form-card">
+            <div class="form-grid">
+              <div class="field span-6"><label>Tipo de ayuda</label><select id="aiChatMode"><option value="creative">Coautor creativo</option><option value="answer">Pregunta sobre el mundo</option><option value="improve">Mejorar una idea o texto</option><option value="plan">Planificar una creación</option></select></div>
+              <div class="field span-6"><label>Modelo de texto</label><select id="aiChatModel"><option value="gpt-5-mini">GPT-5 mini · rápido</option><option value="gpt-5.1">GPT-5.1 · mayor profundidad</option></select></div>
+              <div class="field full"><label>¿Qué quieres pedir a la IA?</label><textarea id="aiChatPrompt" class="ai-chat-prompt" placeholder="Ej.: Inventa una nueva aventura en la que Riven y Glacial encuentren una biblioteca bajo el mar."></textarea></div>
+            </div>
+            <div class="studio-actions"><button class="button button-ai ai-action" id="generateAiChatButton">✨ Crear sin salir de la app</button><button class="button button-soft" id="refreshAiStatusButton">↻ Comprobar conexión</button></div>
+          </div>
+          <div class="studio-output" id="chatOutput"></div>
+          <div class="section-heading ai-history-heading"><div><span class="kicker">Cola y resultados compartidos</span><h2>Creaciones recientes con IA</h2></div></div>
+          <div class="ai-history" id="aiHistory"></div>
+        </div>
+      </section>
+
+      <section class="app-view" id="libraryView" data-view="library">
+        <div class="page-heading"><div><span class="kicker">Creaciones compartidas</span><h1>Biblioteca</h1><p>Libros, ilustraciones, vídeos, escenas y fichas guardadas por cualquier persona con acceso.</p></div><button class="button button-primary" id="refreshLibraryButton">↻ Actualizar</button></div>
+        <div class="upload-card"><div><h3>Importar una creación</h3><p>Puedes pegar un texto generado en ChatGPT o subir una imagen, vídeo o documento.</p></div><div class="upload-actions"><button class="button button-soft" id="pasteTextAsset">Pegar texto</button><label class="button button-soft file-button">Subir archivo<input type="file" id="assetFileInput" accept="image/*,video/*,.txt,.md,.pdf"></label></div></div>
+        <div class="library-grid" id="libraryGrid"></div>
+      </section>
+
+      <section class="app-view" id="worldView" data-view="world">
+        <div class="page-heading"><div><span class="kicker">La brújula del canon</span><h1>Reglas del mundo</h1><p>Todo lo escrito aquí guía las futuras historias, ilustraciones y vídeos.</p></div></div>
+        <div class="editor-card"><div class="form-grid" id="worldForm"></div></div>
+        <div class="canon-export"><div><h3>Documento maestro</h3><p>Genera una Biblia Creativa completa con la versión compartida que existe ahora mismo.</p></div><div><button class="button button-soft" id="copyCanonButton">Copiar canon</button><button class="button button-primary" id="downloadCanonButton">Descargar Markdown</button></div></div>
+      </section>
+
+      <section class="app-view" id="aiContextView" data-view="ai-context">
+        <div class="page-heading"><div><span class="kicker">Canon completo · listo para copiar</span><h1>Contexto para IA</h1><p>Reúne automáticamente toda la información vigente de la aplicación: mundo, reglas, personajes, lugares, aventuras, escena activa, ajustes del estudio y biblioteca compartida.</p></div><div class="page-actions"><button class="button button-soft" id="refreshAiContextButton">↻ Actualizar</button><button class="button button-primary" id="copyAiContextButton">⧉ Copiar para un prompt</button></div></div>
+        <div class="ai-context-grid">
+          <aside class="ai-context-guide">
+            <span class="pill">Texto preparado para modelos de IA</span>
+            <h2>Cómo utilizarlo</h2>
+            <ol><li>Elige el formato completo, compacto o JSON.</li><li>Pulsa <strong>Copiar para un prompt</strong>.</li><li>Pega el texto en ChatGPT o en otra herramienta creativa.</li><li>Añade al final únicamente el encargo nuevo: la ilustración, el capítulo, el vídeo o la escena que quieres crear.</li></ol>
+            <div class="notice info">Los recursos multimedia codificados se sustituyen por una nota. Se conservan todos sus títulos, descripciones, prompts y metadatos útiles para la IA.</div>
+          </aside>
+          <div class="editor-card ai-context-card">
+            <div class="ai-context-toolbar"><div class="ai-context-meta"><strong id="aiContextStatus">Preparando el canon…</strong><span id="aiContextCount"></span></div><label>Formato<select id="aiContextMode"><option value="complete">Completo: texto + JSON</option><option value="compact">Compacto para prompts</option><option value="json">Solo JSON estructurado</option></select></label><button class="button button-soft button-small" id="downloadAiContextButton">Descargar</button></div>
+            <textarea class="ai-context-text" id="aiContextText" readonly spellcheck="false" aria-label="Contexto completo para inteligencia artificial"></textarea>
+          </div>
+        </div>
+      </section>
+
+      <section class="app-view" id="ownerView" data-view="owner">
+        <div class="page-heading"><div><span class="kicker">Solo propietario</span><h1>Ajustes de IA</h1><p>Conecta opcionalmente la API de OpenAI para que el estudio genere textos, imágenes y vídeos sin salir de la aplicación.</p></div></div>
+        <div class="owner-grid">
+          <div class="owner-card"><div class="owner-card-head"><span>🔌</span><div><h3>Conexión OpenAI</h3><p id="ownerAiStatus">Mediante secreto seguro de GitHub</p></div></div><div class="notice info">La clave de OpenAI no se introduce en esta web ni se guarda en el navegador. La versión v3 utiliza el secreto <strong>OPENAI_API_KEY</strong> del repositorio y un trabajador automático.</div><label class="hidden">Clave de API de OpenAI<input type="password" id="openAiKeyInput" autocomplete="off"></label><div class="owner-actions"><a class="button button-primary" href="https://github.com/dimarfe/oaqjp-final-project-emb-ai/settings/secrets/actions/new" target="_blank" rel="noopener">Configurar secreto seguro</a><button class="button button-soft" id="connectAiButton">Comprobar conexión</button><button class="button button-danger hidden" id="disconnectAiButton">Eliminar conexión</button></div></div>
+          <div class="owner-card"><div class="owner-card-head"><span>🌍</span><div><h3>Mundo compartido</h3><p>Una sola versión canónica</p></div></div><p>Todos los cambios se escriben sobre la misma fila de datos. No se crean copias por participante.</p><button class="button button-danger" id="resetWorldButton">Restablecer el mundo inicial</button></div>
+          <div class="owner-card"><div class="owner-card-head"><span>🧰</span><div><h3>Diagnóstico</h3><p>Estado técnico de la aplicación</p></div></div><pre id="diagnosticBox">Cargando…</pre></div>
+        </div>
+      </section>
+
+      <footer class="app-footer"><span>Mi mundo Mágico v3</span><span>Todos editáis el mismo mundo ✨</span></footer>
+    </main>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <div class="modal hidden" id="modal" aria-hidden="true"><div class="modal-backdrop" data-close-modal></div><div class="modal-card"><div class="modal-header"><h2 id="modalTitle">Creación</h2><button class="icon-button" data-close-modal>×</button></div><div class="modal-content" id="modalContent"></div></div></div>
+  <script src="app.js" defer></script>
+  <script src="ai-context.js" defer></script>
+</body>
+</html>
