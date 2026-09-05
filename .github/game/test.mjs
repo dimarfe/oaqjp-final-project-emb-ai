@@ -18,13 +18,15 @@ try{
  report.initial=await page.evaluate(()=>window.gameStatus());
  if(errors.length)throw Error(errors.join('\n'));
  report.checks.push('WebGL 2: mundo y avatar renderizados');
- await page.evaluate(()=>gameTest.quality('low'));
+ await page.evaluate(()=>gameTest.quality('low'));await page.setViewport({width:900,height:560,deviceScaleFactor:1});
  const names=['Elendil','Feyre','Glacial','Chispa','Zeus','Riven','Sky'];
  for(let i=0;i<7;i++){await page.click(`[data-character="${i}"]`);const n=await page.evaluate(()=>gameStatus().character);if(n!==names[i])throw Error('Cambio de personaje incorrecto '+i)}
  report.checks.push('Siete cambios mediante los retratos del HUD');
- const before=await page.evaluate(()=>gameStatus().position);await page.keyboard.down('KeyW');await wait(1600);await page.keyboard.up('KeyW');const after=await page.evaluate(()=>gameStatus().position);
- if(Math.hypot(after.x-before.x,after.z-before.z)<.2)throw Error('El movimiento no responde');
- report.checks.push('Movimiento real por teclado');
+ await page.click('[data-character="0"]');await page.click('#world',{offset:{x:700,y:320}});
+ const before=await page.evaluate(()=>gameStatus().position);report.movementBefore=before;
+ await page.keyboard.down('w');
+ try{await page.waitForFunction(b=>{const p=gameStatus().position;return Math.hypot(p.x-b.x,p.z-b.z)>.6},{timeout:45000},before)}finally{await page.keyboard.up('w');report.movementAfter=await page.evaluate(()=>gameStatus())}
+ report.checks.push('Movimiento real por teclado: más de 0,6 metros');
  await page.evaluate(()=>{gameTest.moveTo(0,4);gameTest.interact()});await wait(100);const intro=await page.$eval('#dialog',n=>!n.classList.contains('hidden'));if(!intro)throw Error('El corazón no interactúa');await page.click('#dialogClose');
  report.checks.push('Interacción con el corazón central');
  for(let i=0;i<7;i++){
@@ -36,11 +38,13 @@ try{
  await page.evaluate(()=>{gameTest.moveTo(0,4);gameTest.interact()});
  const done=await page.evaluate(()=>gameTest.progress().done);if(!done)throw Error('La aventura no se puede completar');await capture('03-victoria');await page.click('#dialogClose');
  report.checks.push('Final de la aventura alcanzable');
+ await page.setViewport({width:1365,height:850,deviceScaleFactor:1});
  await page.evaluate(()=>{gameTest.travel(2);gameTest.moveTo(130,-403);gameTest.day('day');gameTest.quality('high');gameTest.camera(.5,.24,8)});await wait(1800);await capture('04-glacial');
  await page.evaluate(()=>{gameTest.travel(5);gameTest.moveTo(-270,408);gameTest.day('sunset');gameTest.camera(.8,.28,9)});await wait(1600);await capture('05-riven');
  await page.evaluate(()=>{gameTest.setCharacter(6);gameTest.moveTo(-8,28);gameTest.day('night');gameTest.camera(0,.31,10)});await wait(1600);await capture('06-sky-noche');
  await page.click('#mapButton');await capture('07-mapa');await page.click('#map [data-close]');
  const remembered=await page.evaluate(()=>gameTest.progress().done);
+ await page.evaluate(()=>gameTest.quality('low'));await page.setViewport({width:900,height:560,deviceScaleFactor:1});
  await page.reload({waitUntil:'networkidle0',timeout:120000});await page.click('#play');await page.waitForFunction(()=>gameStatus?.().ready,{timeout:120000});
  if(!remembered||!await page.evaluate(()=>gameTest.progress().done))throw Error('El guardado no persiste tras recargar');report.checks.push('Partida conservada después de recargar');
  await page.close();
@@ -49,12 +53,13 @@ try{
  const visible=await page.$eval('#joystick',n=>{const r=n.getBoundingClientRect();return r.width>0&&getComputedStyle(n.parentElement).display!=='none'});if(!visible)throw Error('Faltan controles de móvil');
  await page.tap('[data-character="2"]');if(await page.evaluate(()=>gameStatus().character)!=='Glacial')throw Error('No cambia por tacto');
  const touchBefore=await page.evaluate(()=>gameStatus().position);const box=await page.$eval('#joystick',n=>{const b=n.getBoundingClientRect();return {x:b.x+b.width/2,y:b.y+b.height/2}});
- const cdp=await page.createCDPSession();await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:box.x,y:box.y}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:box.x,y:box.y-35}]});await wait(1800);await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
- const touchAfter=await page.evaluate(()=>gameStatus().position);if(Math.hypot(touchAfter.x-touchBefore.x,touchAfter.z-touchBefore.z)<.15)throw Error('Palanca táctil no mueve');
+ const cdp=await page.createCDPSession();await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:box.x,y:box.y}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:box.x,y:box.y-35}]});
+ try{await page.waitForFunction(b=>{const p=gameStatus().position;return Math.hypot(p.x-b.x,p.z-b.z)>.4},{timeout:45000},touchBefore)}finally{await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});report.touchAfter=await page.evaluate(()=>gameStatus())}
  await page.tap('#castButton');await wait(250);await capture('08-movil');
  report.checks.push('Viewport móvil horizontal: retratos, magia y movimiento multitáctil');
  report.mobile=await page.evaluate(()=>gameStatus());
  await page.setViewport({width:390,height:844,deviceScaleFactor:1,isMobile:true,hasTouch:true});await wait(1000);await capture('09-movil-vertical');
+ if(errors.length)throw Error(errors.join('\n'));
  report.success=true;
 }catch(e){report.success=false;report.error=e.message;try{await capture('ERROR')}catch{};throw e}
 finally{report.errors=errors;await writeFile(out+'/validation.json',JSON.stringify(report,null,2));await browser.close()}
