@@ -1,0 +1,5 @@
+const NAME='elyndeyra-3d-1.0.0';
+const FILES=['./','index.html','style.css','game.js','realm.js','avatars.js','canon.js','vendor/three.js','manifest.webmanifest','assets/icon.svg','assets/family.webp','assets/elendil.webp','assets/feyre.webp','assets/glacial.webp','assets/chispa.webp','assets/zeus.webp','assets/riven.webp','assets/sky.webp'];
+self.addEventListener('install',e=>{e.waitUntil(caches.open(NAME).then(c=>c.addAll(FILES)).then(()=>self.skipWaiting()));});
+self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('elyndeyra-3d-')&&k!==NAME).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
+self.addEventListener('fetch',e=>{const url=new URL(e.request.url);if(e.request.method!=='GET'||!url.href.startsWith(self.registration.scope))return;e.respondWith(fetch(e.request).then(res=>{if(res.ok){const cp=res.clone();caches.open(NAME).then(c=>c.put(e.request,cp));}return res;}).catch(()=>caches.match(e.request).then(res=>res||((e.request.mode==='navigate')?caches.match('index.html'):new Response('',{status:503})))));});
