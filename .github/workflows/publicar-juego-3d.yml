@@ -73,7 +73,9 @@ jobs:
           done
           grep -q 'Entrar en la aventura' /tmp/public-game.html
           for f in game.js realm.js avatars.js canon.js style.css sw.js vendor/three.js assets/family.webp; do curl -fsSL "$URL$f" -o /dev/null; done
-          curl -fsSL 'https://dimarfe.github.io/oaqjp-final-project-emb-ai/v2/' | grep -q '<title>Mi mundo Mágico v2</title>'
+          curl -fsSL 'https://dimarfe.github.io/oaqjp-final-project-emb-ai/v2/' -o /tmp/public-v2.html
+          grep -q '<title>Mi mundo Mágico v2</title>' /tmp/public-v2.html
+          echo 'URL del juego y recursos disponibles. v2 sigue intacta.'
       - name: Entregar copia del juego probado
         uses: actions/upload-artifact@v4
         with:
