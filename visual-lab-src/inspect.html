@@ -1,0 +1,9 @@
+<!doctype html><html><body style="margin:0;background:#111"><script type="module">
+import * as T from './vendor/engine.js';
+const s=new T.Scene();s.background=new T.Color('#18212c');const c=new T.PerspectiveCamera(35,innerWidth/innerHeight,.05,100);c.position.set(0,.8,18);
+const r=new T.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});r.setSize(innerWidth,innerHeight);r.setPixelRatio(1);r.toneMapping=T.ACESFilmicToneMapping;r.toneMappingExposure=1;document.body.appendChild(r.domElement);
+s.add(new T.HemisphereLight(0xdce5ee,0x27201c,1));const sun=new T.DirectionalLight(0xffeddb,3);sun.position.set(-5,6,6);s.add(sun);const rim=new T.DirectionalLight(0x739cdb,2);rim.position.set(6,1,2);s.add(rim);
+const tl=new T.TextureLoader();let diffuse=await tl.loadAsync('./assets/Map-COL.jpg');diffuse.colorSpace=T.SRGBColorSpace;diffuse.flipY=false;let norm=await tl.loadAsync('./assets/Infinite-Level_02_Tangent_SmoothUV.jpg');norm.flipY=false;
+const gl=await new T.GLTFLoader().loadAsync('./assets/LeePerrySmith.glb');let head=gl.scene.children[0];head.material=new T.MeshPhysicalMaterial({map:diffuse,normalMap:norm,normalScale:new T.Vector2(.9,.9),roughness:.52,metalness:0,specularIntensity:.38});s.add(head);window.head=head;window.T=T;window.r=r;window.c=c;window.s=s;window.ready=true;
+const controls=new T.OrbitControls(c,r.domElement);controls.target.set(0,0,0);controls.update();window.controls=controls;r.setAnimationLoop(()=>r.render(s,c));
+</script></body></html>
