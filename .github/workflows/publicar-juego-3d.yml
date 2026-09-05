@@ -1,0 +1,82 @@
+name: Publicar juego 3D de las Siete Torres
+on:
+  push:
+    branches: [elyndeyra-juego-3d]
+    paths: ['game-release/**','.github/game/**','.github/workflows/publicar-juego-3d.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: elyndeyra-juego-3d-publicar
+  cancel-in-progress: true
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: elyndeyra-juego-3d
+          fetch-depth: 0
+      - name: Reconstruir las fuentes e imágenes
+        run: |
+          python3 -m pip install --quiet Pillow
+          python3 .github/game/build.py /tmp/game-build
+          for f in game.js realm.js canon.js avatars.js sw.js; do node --check /tmp/game-build/$f; done
+      - name: Incorporar motor 3D y licencia
+        run: |
+          mkdir -p /tmp/game-tools /tmp/game-build/vendor
+          cd /tmp/game-tools
+          npm init -y >/dev/null
+          npm install --silent --save-exact three@0.180.0 esbuild@0.25.10 puppeteer-core@latest
+          printf "export * from 'three';\n" > engine.js
+          npx esbuild engine.js --bundle --format=esm --minify --outfile=/tmp/game-build/vendor/three.js
+          cp node_modules/three/LICENSE /tmp/game-build/vendor/THREE-LICENSE.txt
+      - name: Probar el juego en Chrome con WebGL y controles táctiles
+        run: |
+          cp .github/game/test.mjs /tmp/game-tools/test.mjs
+          python3 -m http.server 8787 --bind 127.0.0.1 --directory /tmp/game-build >/tmp/game-server.log 2>&1 &
+          cd /tmp/game-tools
+          node test.mjs
+      - name: Conservar el resultado de las pruebas
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: juego-3d-pruebas
+          path: /tmp/game-test-results/
+          retention-days: 7
+      - name: Publicar solo el juego y verificar la integridad de v2
+        run: |
+          set -euo pipefail
+          git fetch origin gh-pages
+          BEFORE=$(git rev-parse origin/gh-pages:v2)
+          git worktree add -B gh-pages /tmp/game-pages origin/gh-pages
+          mkdir -p /tmp/game-pages/juego-3d
+          cp -a /tmp/game-build/. /tmp/game-pages/juego-3d/
+          cd /tmp/game-pages
+          git config user.name 'dimarfe'
+          git config user.email '45332405+dimarfe@users.noreply.github.com'
+          git add juego-3d
+          if ! git diff --cached --quiet; then
+            git commit -m 'Publicar Elyndeyra Glaciriven Chizeuskia — juego 3D'
+            test "$(git rev-parse HEAD:v2)" = "$BEFORE"
+            git push origin HEAD:gh-pages
+          fi
+          echo "v2 preservada, árbol idéntico: $BEFORE"
+      - name: Comprobar la URL pública
+        run: |
+          set -euo pipefail
+          URL='https://dimarfe.github.io/oaqjp-final-project-emb-ai/juego-3d/'
+          for i in {1..40}; do
+            if curl -fsSL "$URL" -o /tmp/public-game.html && grep -q 'Entrar en la aventura' /tmp/public-game.html; then break; fi
+            sleep 5
+          done
+          grep -q 'Entrar en la aventura' /tmp/public-game.html
+          for f in game.js realm.js avatars.js canon.js style.css sw.js vendor/three.js assets/family.webp; do curl -fsSL "$URL$f" -o /dev/null; done
+          curl -fsSL 'https://dimarfe.github.io/oaqjp-final-project-emb-ai/v2/' | grep -q '<title>Mi mundo Mágico v2</title>'
+      - name: Entregar copia del juego probado
+        uses: actions/upload-artifact@v4
+        with:
+          name: Elyndeyra-juego-3D
+          path: /tmp/game-build/
+          retention-days: 14
