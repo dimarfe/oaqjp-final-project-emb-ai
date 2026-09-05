@@ -1,0 +1,25 @@
+name: Preparar motor 3D de Elyndeyra
+on:
+  push:
+    branches: [elyndeyra-juego-3d]
+    paths: [.github/workflows/preparar-juego-3d.yml]
+permissions:
+  contents: read
+jobs:
+  preparar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Empaquetar dependencia con licencia
+        run: |
+          mkdir -p /tmp/engine/vendor
+          cd /tmp/engine
+          npm init -y >/dev/null
+          npm install --save-exact three@0.180.0 esbuild@0.25.10 --silent
+          printf "export * from 'three';\n" > engine.js
+          npx esbuild engine.js --bundle --format=esm --minify --outfile=vendor/three.js
+          cp node_modules/three/LICENSE vendor/THREE-LICENSE.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: elyndeyra-engine
+          path: /tmp/engine/vendor/
+          retention-days: 7
