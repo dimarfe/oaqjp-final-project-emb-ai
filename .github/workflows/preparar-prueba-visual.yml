@@ -1,0 +1,28 @@
+name: Preparar recursos prueba visual
+on:
+  push:
+    branches: [prueba-visual-elendil]
+    paths: [.github/workflows/preparar-prueba-visual.yml]
+permissions:
+  contents: read
+jobs:
+  recursos:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar recursos de demostración con su licencia
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/lab/assets /tmp/lab/vendor /tmp/tools
+          BASE='https://raw.githubusercontent.com/mrdoob/three.js/r180/examples/models/gltf/LeePerrySmith'
+          for f in LeePerrySmith.glb LeePerrySmith_License.txt Map-COL.jpg Map-SPEC.jpg Infinite-Level_02_Tangent_SmoothUV.jpg Infinite-Level_02_Disp_NoSmoothUV-4096.jpg; do curl -fsSL "$BASE/$f" -o "/tmp/lab/assets/$f"; done
+          cd /tmp/tools
+          npm init -y >/dev/null
+          npm install --silent --save-exact three@0.180.0 esbuild@0.25.10
+          printf "export * from 'three';\nexport { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';\nexport { OrbitControls } from 'three/addons/controls/OrbitControls.js';\nexport { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';\nexport { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';\nexport { RenderPass } from 'three/addons/postprocessing/RenderPass.js';\nexport { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';\nexport { OutputPass } from 'three/addons/postprocessing/OutputPass.js';\nexport { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';\n" > engine.js
+          npx esbuild engine.js --bundle --format=esm --minify --outfile=/tmp/lab/vendor/engine.js
+          cp node_modules/three/LICENSE /tmp/lab/vendor/THREE-LICENSE.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: recursos-prueba-visual
+          path: /tmp/lab/
+          retention-days: 7
