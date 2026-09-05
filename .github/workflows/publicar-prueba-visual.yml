@@ -1,0 +1,115 @@
+name: Publicar prueba visual independiente
+on:
+  push:
+    branches: [prueba-visual-elendil]
+    paths: [.github/workflows/publicar-prueba-visual.yml]
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Recuperar la muestra comprobada
+        uses: actions/download-artifact@v4
+        with:
+          name: demo-visual-build
+          run-id: 33987288689
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: /tmp/visual-approved
+      - name: Preparar distribución y atribuciones
+        run: |
+          set -euo pipefail
+          rm -f /tmp/visual-approved/refine.py /tmp/visual-approved/inspect.html
+          cat > /tmp/visual-approved/README.md <<'EOF'
+          # Prueba visual 3D — estudio para Elendil
+
+          Comparativa interactiva entre el avatar del prototipo original y un busto detallado experimental. No es un juego, no es Unreal Engine y no acredita el parecido definitivo con la ilustración de Elendil. No se debe contratar un servidor gráfico basándose únicamente en esta prueba.
+
+          ## Funciones comprobables
+          Giro mediante ratón o gesto táctil, zoom, tres encuadres, tres iluminaciones, comparativa antes/después, modo de malla, marcas eléctricas y captura del visor.
+
+          ## Límites
+          Rostro provisional basado en una cabeza escaneada de otra persona. Ojos cerrados, sin animación facial ni cuerpo completo. No hay servidor GPU, multiplayer, Supabase o uso de la API de OpenAI. No se ha modificado Mi mundo Mágico v2 ni el juego publicado.
+
+          ## Atribución
+          Base: Infinite, 3D Head Scan by Lee Perry-Smith / Infinite Realities. CC BY 3.0. Fuente: ejemplos de Three.js r180, https://github.com/mrdoob/three.js/tree/r180/examples/models/gltf/LeePerrySmith . Licencia: assets/LeePerrySmith_License.txt . Se han adaptado proporciones y materiales, y añadido cabello, barba, collar y marcas. El autor no respalda esta adaptación.
+          Motor: Three.js 0.180.0, licencia MIT en vendor/THREE-LICENSE.txt .
+          Imagen de referencia: ilustración familiar aportada por el propietario. Modelo original: el juego del propio proyecto.
+          EOF
+          node --check /tmp/visual-approved/lab.js
+      - name: Confirmar renderizado y sombreador de piel
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/testtools /tmp/visual-evidence
+          cd /tmp/testtools
+          npm init -y >/dev/null
+          npm install --silent puppeteer-core@24.16.0
+          python3 -m http.server 8790 --directory /tmp/visual-approved >/tmp/visual-server.log 2>&1 &
+          cat > test.mjs <<'JS'
+          import puppeteer from 'puppeteer-core';
+          import {writeFile} from 'node:fs/promises';
+          const browser=await puppeteer.launch({executablePath:'/usr/bin/google-chrome',headless:true,args:['--no-sandbox','--disable-dev-shm-usage','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+          const page=await browser.newPage();await page.setViewport({width:1440,height:1000});const errors=[];
+          page.on('pageerror',e=>errors.push(e.message));
+          page.on('console',m=>{if(m.type()==='error' && /THREE|shader|WebGL|program|GLSL/i.test(m.text()))errors.push(m.text())});
+          await page.goto('http://127.0.0.1:8790/');await page.waitForFunction(()=>window.labStatus?.().ready,{timeout:120000});
+          await new Promise(r=>setTimeout(r,1200));
+          const programs=await page.evaluate(()=>labTest.renderer.info.programs.map(p=>({name:p.name,runnable:p.diagnostics?.runnable??true})));
+          if(programs.some(p=>!p.runnable))throw Error('Shader no ejecutable');
+          await page.screenshot({path:'/tmp/visual-evidence/01-muestra.png'});
+          await page.click('[data-mode="old"]');await new Promise(r=>setTimeout(r,500));await page.screenshot({path:'/tmp/visual-evidence/02-original.png'});
+          await page.click('[data-mode="new"]');await page.click('[data-shot="profile"]');await new Promise(r=>setTimeout(r,500));await page.screenshot({path:'/tmp/visual-evidence/03-perfil.png'});
+          const result={success:errors.length===0,errors,programs,scope:'Prueba de materiales y geometría. No es Unreal, Elendil definitivo ni una partida.',engine:'Three.js 0.180.0 / Chrome software WebGL'};
+          await writeFile('/tmp/visual-evidence/validacion.json',JSON.stringify(result,null,2));if(errors.length)throw Error(errors.join('\n'));
+          await browser.close();
+          JS
+          node test.mjs
+      - name: Publicar en carpeta separada
+        run: |
+          set -euo pipefail
+          git fetch origin gh-pages
+          V2=$(git rev-parse origin/gh-pages:v2)
+          GAME=$(git rev-parse origin/gh-pages:juego-3d)
+          git worktree add -B gh-pages /tmp/visual-pages origin/gh-pages
+          mkdir -p /tmp/visual-pages/prueba-visual
+          cp -a /tmp/visual-approved/. /tmp/visual-pages/prueba-visual/
+          cd /tmp/visual-pages
+          git config user.name dimarfe
+          git config user.email '45332405+dimarfe@users.noreply.github.com'
+          git add prueba-visual
+          if ! git diff --cached --quiet; then
+            git commit -m 'Publicar comparativa visual independiente: rostro y materiales provisionales'
+            test "$(git rev-parse HEAD:v2)" = "$V2"
+            test "$(git rev-parse HEAD:juego-3d)" = "$GAME"
+            git push origin HEAD:gh-pages
+          fi
+          echo "v2 íntegra: $V2"
+          echo "Juego íntegro: $GAME"
+      - name: Verificar dirección pública
+        run: |
+          set -euo pipefail
+          URL='https://dimarfe.github.io/oaqjp-final-project-emb-ai/prueba-visual/'
+          for i in {1..40}; do
+            if curl -fsSL "$URL" -o /tmp/published-visual.html && grep -q 'Prueba visual 3D' /tmp/published-visual.html; then break; fi
+            sleep 5
+          done
+          grep -q 'Prueba visual 3D' /tmp/published-visual.html
+          for file in lab.js lab.css reference.webp assets/LeePerrySmith.glb assets/Map-COL.jpg assets/Infinite-Level_02_Tangent_SmoothUV.jpg vendor/engine.js README.md; do curl -fsSL "$URL$file" -o /dev/null; done
+          echo 'Muestra accesible por web y recursos verificados.'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: evidencia-prueba-visual-publicada
+          path: /tmp/visual-evidence/
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Prueba-visual-Elendil
+          path: /tmp/visual-approved/
+          retention-days: 14
