@@ -19,11 +19,11 @@ float bx=abs(vHP.x+.09);float by=vHP.y;
 float beard=(1.-smoothstep(.0,1.00,by))*smoothstep(1.2,1.85,vHP.z)*smoothstep(-1.02,-.48,by);
 float lip=(1.-smoothstep(.48,.69,bx))*smoothstep(.15,.25,by)*(1.-smoothstep(.44,.52,by));
 float must=(1.-smoothstep(.40,.62,bx))*smoothstep(.49,.59,by)*(1.-smoothstep(.78,.88,by))*smoothstep(1.9,2.1,vHP.z);
-float grain=fract(sin(dot(vHP.xy,vec2(1633.7,772.9)))*43758.5453;
+float grain=fract(sin(dot(vHP.xy,vec2(1633.7,772.9)))*43758.5453);
 diffuseColor.rgb*=mix(vec3(1.),vec3(.22,.20,.18),clamp((beard*(1.-lip)+must*.85)*(.40+grain*.13),0.,.8));`);};''' + s[end+1:]
 s=s.replace("const lines=new T.GridHelper(80,40,0x2a4258,0x172b3f);lines.position.y=-4.16;scene.add(lines);",'')
 s=s.replace("color:0x0d1a26,roughness:.78","color:0x080e15,roughness:.88")
-s=s.replace("head-prototype-03","head-prototype-05")
+s=s.replace("head-prototype-03","head-prototype-06")
 s=s.replace('active=true;','active=true,dirty=true;')
 s=s.replace('function mode(v){','function mode(v){dirty=true;renderer.shadowMap.needsUpdate=true;')
 s=s.replace('function setLight(mode){','function setLight(mode){dirty=true;')
@@ -34,6 +34,7 @@ s=s.replace('params.wire=e.target.checked','dirty=true;params.wire=e.target.chec
 s=s.replace('renderer.shadowMap.type=T.PCFSoftShadowMap;','renderer.shadowMap.type=T.PCFSoftShadowMap;renderer.shadowMap.autoUpdate=false;renderer.shadowMap.needsUpdate=true;')
 start=s.index('renderer.setAnimationLoop(()=>{');end=s.index(');}',start)+2
 s=s[:start]+'''renderer.setAnimationLoop(()=>{if(!active)return;const moved=controls.update();if(!moved&&!dirty&&!controls.autoRotate)return;renderer.render(scene,camera);dirty=false;$('#metrics').textContent=`${renderer.info.render.triangles.toLocaleString('es-ES')} triángulos · WebGL 2`;});''' + s[end:]
+s=s.replace('ESTUDIO DE MATERIALES · ROSTRO PROVISIONAL','MODELO PROVISIONAL · NO ES UNREAL')
 p.write_text(s)
-p=p.parent/'index.html';s=p.read_text();s=s.replace('Geometría de rostro detallada, piel texturizada, ojos, cabello por hebras y luz','Geometría de rostro detallada, piel texturizada, cabello por hebras y luz');s=s.replace('El parecido con vuestra imagen sigue pendiente de modelado específico.','El parecido con vuestra imagen sigue pendiente de modelado específico. La pose de esta muestra mantiene los ojos cerrados; no dispone de animación facial.');p.write_text(s)
+p=p.parent/'index.html';s=p.read_text();s=s.replace('Geometría de rostro detallada, piel texturizada, ojos, cabello por hebras y luz','Geometría de rostro detallada, piel texturizada, cabello por hebras y luz');s=s.replace('El parecido con vuestra imagen sigue pendiente de modelado específico.','El parecido con vuestra imagen sigue pendiente de modelado específico. La pose de esta muestra mantiene los ojos cerrados; no dispone de animación facial.');s=s.replace('ESTUDIO DE MATERIALES</span>','MODELO PROVISIONAL · NO ES UNREAL</span>');p.write_text(s)
 print('Refinamiento y render bajo demanda aplicados.')
