@@ -19,6 +19,7 @@ jobs:
           set -euo pipefail
           mkdir -p /tmp/lab/assets /tmp/lab/vendor /tmp/lab/legacy /tmp/tools /tmp/shots
           cp -a visual-lab-src/. /tmp/lab/
+          python3 /tmp/lab/refine.py /tmp/lab/lab.js
           cp juego-3d/avatars.js juego-3d/realm.js juego-3d/canon.js /tmp/lab/legacy/
           sed -i "s|'./vendor/three.js'|'../vendor/engine.js'|g" /tmp/lab/legacy/*.js
           BASE='https://raw.githubusercontent.com/mrdoob/three.js/r180/examples/models/gltf/LeePerrySmith'
@@ -26,8 +27,7 @@ jobs:
           python3 -m pip install --quiet Pillow
           python3 - <<'PY'
           from PIL import Image
-          im=Image.open('juego-3d/assets/family.webp')
-          w,h=im.size
+          im=Image.open('juego-3d/assets/family.webp');w,h=im.size
           im.crop((int(w*.08),int(h*.085),int(w*.264),int(h*.56))).save('/tmp/lab/reference.webp',quality=93)
           PY
           cd /tmp/tools
@@ -45,14 +45,17 @@ jobs:
           const b=await puppeteer.launch({executablePath:'/usr/bin/google-chrome',headless:true,args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader','--disable-dev-shm-usage']});
           const p=await b.newPage();await p.setViewport({width:1440,height:1000});const errors=[];p.on('pageerror',e=>errors.push(e.message));p.on('console',m=>{if(m.type()==='error')console.log(m.text())});
           await p.goto('http://127.0.0.1:8788/');await p.waitForFunction(()=>window.labStatus?.().ready,{timeout:120000});
-          const wait=()=>new Promise(r=>setTimeout(r,1400));await wait();await p.screenshot({path:'/tmp/shots/01-estudio.png'});
-          await p.click('[data-mode="old"]');await wait();await p.screenshot({path:'/tmp/shots/02-original.png'});
+          const wait=()=>new Promise(r=>setTimeout(r,1000));await wait();await p.screenshot({path:'/tmp/shots/01-estudio.png'});
+          await p.click('[data-mode="old"]');await wait();await p.screenshot({path:'/tmp/shots/02-original.png'});if(await p.evaluate(()=>labStatus().mode)!=='old')throw Error('La comparación no cambia');
           await p.click('[data-mode="new"]');await p.click('[data-shot="face"]');await wait();await p.screenshot({path:'/tmp/shots/03-rostro.png'});
           await p.click('[data-shot="profile"]');await wait();await p.screenshot({path:'/tmp/shots/04-perfil.png'});
           await p.click('[data-shot="bust"]');await p.click('[data-light="storm"]');await wait();await p.screenshot({path:'/tmp/shots/05-tormenta.png'});
           await p.click('[data-light="sunset"]');await wait();await p.screenshot({path:'/tmp/shots/06-atardecer.png'});
           const count=await p.evaluate(()=>{let n=0;labTest.high.traverse(m=>{if(m.isMesh)n+=(m.geometry.index?.count||m.geometry.attributes.position.count)/3});return n});
-          await writeFile('/tmp/shots/validation.json',JSON.stringify({errors,status:await p.evaluate(()=>labStatus()),trianglesNew:count,renderer:'Chrome headless / SwiftShader — no benchmark de móvil físico'},null,2));
+          await p.close();
+          const m=await b.newPage();await m.setViewport({width:390,height:844,isMobile:true,hasTouch:true,deviceScaleFactor:1});m.on('pageerror',e=>errors.push(e.message));await m.goto('http://127.0.0.1:8788/');await m.waitForFunction(()=>window.labStatus?.().ready,{timeout:120000});
+          const before=await m.evaluate(()=>labTest.camera.position.toArray());const cdp=await m.createCDPSession();await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:200,y:340}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:300,y:340}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await wait();const after=await m.evaluate(()=>labTest.camera.position.toArray());if(before.every((v,i)=>Math.abs(v-after[i])<.01))throw Error('No gira con el dedo');await m.screenshot({path:'/tmp/shots/07-movil.png'});
+          await writeFile('/tmp/shots/validation.json',JSON.stringify({errors,status:await m.evaluate(()=>labStatus()),trianglesNew:count,touchRotation:true,checks:['Modelo cargado','Comparación de modelos','Tres encuadres','Tres iluminaciones','Giro táctil de cámara'],renderer:'Chrome headless / SwiftShader — no benchmark de móvil físico'},null,2));
           if(errors.length)throw Error(errors.join(' | '));await b.close();
           JS
           cd /tmp/tools && node test.mjs
