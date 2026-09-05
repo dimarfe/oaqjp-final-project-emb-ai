@@ -5,33 +5,55 @@ on:
     paths: ['visual-lab-src/**','.github/workflows/render-prueba-visual.yml']
 permissions:
   contents: read
+concurrency:
+  group: prueba-visual-elendil
+  cancel-in-progress: true
 jobs:
   render:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
       - name: Preparar escena y motor
         run: |
           set -euo pipefail
-          mkdir -p /tmp/lab/assets /tmp/lab/vendor /tmp/tools /tmp/shots
+          mkdir -p /tmp/lab/assets /tmp/lab/vendor /tmp/lab/legacy /tmp/tools /tmp/shots
           cp -a visual-lab-src/. /tmp/lab/
+          cp juego-3d/avatars.js juego-3d/realm.js juego-3d/canon.js /tmp/lab/legacy/
+          sed -i "s|'./vendor/three.js'|'../vendor/engine.js'|g" /tmp/lab/legacy/*.js
           BASE='https://raw.githubusercontent.com/mrdoob/three.js/r180/examples/models/gltf/LeePerrySmith'
           for f in LeePerrySmith.glb LeePerrySmith_License.txt Map-COL.jpg Map-SPEC.jpg Infinite-Level_02_Tangent_SmoothUV.jpg Infinite-Level_02_Disp_NoSmoothUV-4096.jpg; do curl -fsSL "$BASE/$f" -o "/tmp/lab/assets/$f"; done
+          python3 -m pip install --quiet Pillow
+          python3 - <<'PY'
+          from PIL import Image
+          im=Image.open('juego-3d/assets/family.webp')
+          w,h=im.size
+          im.crop((int(w*.08),int(h*.085),int(w*.264),int(h*.56))).save('/tmp/lab/reference.webp',quality=93)
+          PY
           cd /tmp/tools
           npm init -y >/dev/null
           npm install --silent --save-exact three@0.180.0 esbuild@0.25.10 puppeteer-core@24.16.0
           printf "export * from 'three';\nexport { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';\nexport { OrbitControls } from 'three/addons/controls/OrbitControls.js';\nexport { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';\nexport { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';\nexport { RenderPass } from 'three/addons/postprocessing/RenderPass.js';\nexport { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';\nexport { OutputPass } from 'three/addons/postprocessing/OutputPass.js';\nexport { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';\n" > engine.js
           npx esbuild engine.js --bundle --format=esm --minify --outfile=/tmp/lab/vendor/engine.js
-      - name: Capturas reales
+          cp node_modules/three/LICENSE /tmp/lab/vendor/THREE-LICENSE.txt
+          node --check /tmp/lab/lab.js
+      - name: Capturas reales y pruebas
         run: |
           python3 -m http.server 8788 --directory /tmp/lab >/tmp/http.log 2>&1 &
           cat > /tmp/tools/test.mjs <<'JS'
-          import puppeteer from 'puppeteer-core';
+          import puppeteer from 'puppeteer-core';import {writeFile} from 'node:fs/promises';
           const b=await puppeteer.launch({executablePath:'/usr/bin/google-chrome',headless:true,args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader','--disable-dev-shm-usage']});
-          const p=await b.newPage();await p.setViewport({width:1000,height:1000});p.on('pageerror',e=>console.log(e));
-          await p.goto('http://127.0.0.1:8788/inspect.html');await p.waitForFunction(()=>window.ready,{timeout:90000});await new Promise(r=>setTimeout(r,2000));await p.screenshot({path:'/tmp/shots/front.png'});
-          await p.evaluate(()=>{c.position.set(12,.8,12);controls.update()});await new Promise(r=>setTimeout(r,500));await p.screenshot({path:'/tmp/shots/profile.png'});await b.close();
+          const p=await b.newPage();await p.setViewport({width:1440,height:1000});const errors=[];p.on('pageerror',e=>errors.push(e.message));p.on('console',m=>{if(m.type()==='error')console.log(m.text())});
+          await p.goto('http://127.0.0.1:8788/');await p.waitForFunction(()=>window.labStatus?.().ready,{timeout:120000});
+          const wait=()=>new Promise(r=>setTimeout(r,1400));await wait();await p.screenshot({path:'/tmp/shots/01-estudio.png'});
+          await p.click('[data-mode="old"]');await wait();await p.screenshot({path:'/tmp/shots/02-original.png'});
+          await p.click('[data-mode="new"]');await p.click('[data-shot="face"]');await wait();await p.screenshot({path:'/tmp/shots/03-rostro.png'});
+          await p.click('[data-shot="profile"]');await wait();await p.screenshot({path:'/tmp/shots/04-perfil.png'});
+          await p.click('[data-shot="bust"]');await p.click('[data-light="storm"]');await wait();await p.screenshot({path:'/tmp/shots/05-tormenta.png'});
+          await p.click('[data-light="sunset"]');await wait();await p.screenshot({path:'/tmp/shots/06-atardecer.png'});
+          const count=await p.evaluate(()=>{let n=0;labTest.high.traverse(m=>{if(m.isMesh)n+=(m.geometry.index?.count||m.geometry.attributes.position.count)/3});return n});
+          await writeFile('/tmp/shots/validation.json',JSON.stringify({errors,status:await p.evaluate(()=>labStatus()),trianglesNew:count,renderer:'Chrome headless / SwiftShader — no benchmark de móvil físico'},null,2));
+          if(errors.length)throw Error(errors.join(' | '));await b.close();
           JS
           cd /tmp/tools && node test.mjs
       - uses: actions/upload-artifact@v4
@@ -39,4 +61,9 @@ jobs:
         with:
           name: capturas-prueba-visual
           path: /tmp/shots/
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        with:
+          name: demo-visual-build
+          path: /tmp/lab/
           retention-days: 7
