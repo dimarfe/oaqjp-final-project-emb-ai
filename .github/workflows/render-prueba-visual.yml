@@ -1,0 +1,42 @@
+name: Revisar muestra visual 3D
+on:
+  push:
+    branches: [prueba-visual-elendil]
+    paths: ['visual-lab-src/**','.github/workflows/render-prueba-visual.yml']
+permissions:
+  contents: read
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v6
+      - name: Preparar escena y motor
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/lab/assets /tmp/lab/vendor /tmp/tools /tmp/shots
+          cp -a visual-lab-src/. /tmp/lab/
+          BASE='https://raw.githubusercontent.com/mrdoob/three.js/r180/examples/models/gltf/LeePerrySmith'
+          for f in LeePerrySmith.glb LeePerrySmith_License.txt Map-COL.jpg Map-SPEC.jpg Infinite-Level_02_Tangent_SmoothUV.jpg Infinite-Level_02_Disp_NoSmoothUV-4096.jpg; do curl -fsSL "$BASE/$f" -o "/tmp/lab/assets/$f"; done
+          cd /tmp/tools
+          npm init -y >/dev/null
+          npm install --silent --save-exact three@0.180.0 esbuild@0.25.10 puppeteer-core@24.16.0
+          printf "export * from 'three';\nexport { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';\nexport { OrbitControls } from 'three/addons/controls/OrbitControls.js';\nexport { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';\nexport { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';\nexport { RenderPass } from 'three/addons/postprocessing/RenderPass.js';\nexport { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';\nexport { OutputPass } from 'three/addons/postprocessing/OutputPass.js';\nexport { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';\n" > engine.js
+          npx esbuild engine.js --bundle --format=esm --minify --outfile=/tmp/lab/vendor/engine.js
+      - name: Capturas reales
+        run: |
+          python3 -m http.server 8788 --directory /tmp/lab >/tmp/http.log 2>&1 &
+          cat > /tmp/tools/test.mjs <<'JS'
+          import puppeteer from 'puppeteer-core';
+          const b=await puppeteer.launch({executablePath:'/usr/bin/google-chrome',headless:true,args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader','--disable-dev-shm-usage']});
+          const p=await b.newPage();await p.setViewport({width:1000,height:1000});p.on('pageerror',e=>console.log(e));
+          await p.goto('http://127.0.0.1:8788/inspect.html');await p.waitForFunction(()=>window.ready,{timeout:90000});await new Promise(r=>setTimeout(r,2000));await p.screenshot({path:'/tmp/shots/front.png'});
+          await p.evaluate(()=>{c.position.set(12,.8,12);controls.update()});await new Promise(r=>setTimeout(r,500));await p.screenshot({path:'/tmp/shots/profile.png'});await b.close();
+          JS
+          cd /tmp/tools && node test.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: capturas-prueba-visual
+          path: /tmp/shots/
+          retention-days: 7
